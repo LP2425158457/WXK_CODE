@@ -1,0 +1,6 @@
+C:\Code\WXK\LP.WXK.K3.App.ServicePlugIn\obj\Debug\LP.WXK.K3.App.ServicePlugIn.csproj.CoreCompileInputs.cache
+C:\Program Files (x86)\Kingdee\K3Cloud\WebSite\bin\LP.WXK.K3.App.ServicePlugIn.dll
+C:\Program Files (x86)\Kingdee\K3Cloud\WebSite\bin\LP.WXK.K3.App.ServicePlugIn.pdb
+C:\Code\WXK\LP.WXK.K3.App.ServicePlugIn\obj\Debug\LP.WXK.K3.App.ServicePlugIn.csproj.CopyComplete
+C:\Code\WXK\LP.WXK.K3.App.ServicePlugIn\obj\Debug\LP.WXK.K3.App.ServicePlugIn.dll
+C:\Code\WXK\LP.WXK.K3.App.ServicePlugIn\obj\Debug\LP.WXK.K3.App.ServicePlugIn.pdb
