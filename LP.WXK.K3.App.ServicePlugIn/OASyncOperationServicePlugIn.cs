@@ -10,7 +10,7 @@ using Kingdee.BOS;
 
 namespace LP.WXK.K3.App.ServicePlugIn
 {
-    [Description("【操作插件】付款单、收款退款单的"已付款确认"增加插件，调用OA同步；并写入日志；"), HotUpdate]
+    [Description("【操作插件】付款单、收款退款单的\"已付款确认\"增加插件，调用OA同步；并写入日志；"), HotUpdate]
     public class OASyncOperationServicePlugIn : AbstractOperationServicePlugIn
     {
 
