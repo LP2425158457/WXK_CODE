@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net.Http;
 using Kingdee.BOS.JSON;
 using Kingdee.BOS.Contracts;
@@ -11,28 +11,40 @@ namespace LP.WXK.K3.App.ServicePlugIn
 {
     public class OASyncService
     {
-        private readonly string baseURL = "http://172.17.14.93:80";
+        private const string DEFAULT_BASE_URL = "http://172.17.14.93:80";
+        private const string DEFAULT_SKIP_NODE_PATH = "/api/xfd/skipCurrentNode";
+        private const string PAYBILL_BASE_URL = "http://10.10.100.34:81";
+        private const string PAYBILL_SKIP_NODE_PATH = "/api/xfd/sctgfskipCurrentNode";
+
+        private readonly string baseURL;
+        private readonly string skipNodePath;
         private readonly string appId = "f975a20b-8632-4b0a-9be7-342b010be988";
         private string secrit = "";
         private string spk = "";
         private readonly HttpClient httpClient;
         private readonly Program p;
 
-        public OASyncService()
+        public OASyncService() : this(DEFAULT_BASE_URL, DEFAULT_SKIP_NODE_PATH)
         {
+        }
+
+        public OASyncService(bool isPayBill) : this(
+            isPayBill ? PAYBILL_BASE_URL : DEFAULT_BASE_URL,
+            isPayBill ? PAYBILL_SKIP_NODE_PATH : DEFAULT_SKIP_NODE_PATH)
+        {
+        }
+
+        private OASyncService(string baseURL, string skipNodePath)
+        {
+            this.baseURL = baseURL;
+            this.skipNodePath = skipNodePath;
             httpClient = new HttpClient();
             p = new Program();
         }
 
-        /// <summary>
-        /// 同步OA跳转节点
-        /// </summary>
-        /// <param name="context">上下文</param>
-        /// <param name="requestId">请求ID</param>
-        /// <returns>是否成功</returns>
         public bool skipCurrentCodeAsync(Context context, string requestId)
         {
-            string url = $"{baseURL}/api/xfd/skipCurrentNode?requestId={requestId}";
+            string url = $"{baseURL}{skipNodePath}?requestId={requestId}";
             string secret = regist();
             string token = applyToken(secret);
 
@@ -84,10 +96,6 @@ namespace LP.WXK.K3.App.ServicePlugIn
             throw new Exception(unknownError);
         }
 
-        /// <summary>
-        /// 注册OA
-        /// </summary>
-        /// <returns>加密后的密钥</returns>
         public string regist()
         {
             if (!string.IsNullOrEmpty(secrit) && !string.IsNullOrEmpty(spk))
@@ -135,11 +143,6 @@ namespace LP.WXK.K3.App.ServicePlugIn
             return p.EncryptByPublicKey(secrit, spk);
         }
 
-        /// <summary>
-        /// 获取Token
-        /// </summary>
-        /// <param name="secret">加密后的密钥</param>
-        /// <returns>访问令牌</returns>
         public string applyToken(string secret)
         {
             string url = baseURL + "/api/ec/dev/auth/applytoken";
@@ -178,14 +181,6 @@ namespace LP.WXK.K3.App.ServicePlugIn
             return Convert.ToString(json["token"]);
         }
 
-        /// <summary>
-        /// 保存OA日志
-        /// </summary>
-        /// <param name="context">上下文</param>
-        /// <param name="number">单据编号</param>
-        /// <param name="req">请求内容</param>
-        /// <param name="resp">响应内容</param>
-        /// <param name="isSuccess">是否成功</param>
         public void saveOALog(Context context, string number, string req, string resp, bool isSuccess)
         {
             try
