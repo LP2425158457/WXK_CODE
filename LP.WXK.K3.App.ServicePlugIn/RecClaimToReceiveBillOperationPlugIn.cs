@@ -1,4 +1,4 @@
-﻿using Kingdee.BOS.Core.DynamicForm.PlugIn.Args;
+using Kingdee.BOS.Core.DynamicForm.PlugIn.Args;
 using Kingdee.BOS.Core.Metadata;
 using Kingdee.BOS.Orm.DataEntity;
 using Kingdee.BOS.App.Data;
@@ -80,11 +80,6 @@ namespace LP.WXK.K3.App.ServicePlugIn
 
             foreach (long billId in savedBillIds)
             {
-                if (!ShouldTryGenerateReceiveBill(billId))
-                {
-                    continue;
-                }
-
                 BatchKey key = TryGetBatchKey(billId);
                 if (key == null)
                 {
@@ -105,17 +100,18 @@ namespace LP.WXK.K3.App.ServicePlugIn
                     continue;
                 }
 
-                if (!TryValidateBatchAmounts(sameBatchIds, key.RecAmount, out _))
+                List<long> eligibleIds = sameBatchIds.Where(id => ShouldTryGenerateReceiveBill(id)).ToList();
+                if (eligibleIds.Count == 0)
                 {
                     continue;
                 }
 
-                if (sameBatchIds.Any(id => !ShouldTryGenerateReceiveBill(id)))
+                if (!TryValidateBatchAmounts(eligibleIds, key.RecAmount, out _))
                 {
                     continue;
                 }
 
-                PushToReceiveBill(sameBatchIds, sourceFormId);
+                PushToReceiveBill(eligibleIds, sourceFormId);
             }
         }
 
@@ -276,16 +272,15 @@ WHERE h.FRECAMOUNT = {0}
   AND h.FRECORGID = {2}
   AND e.FACCOUNTID = {3}
   AND e.FSETTLETYPEID = {4}
-  AND h.FDocumentStatus = N'{5}'
+  AND h.FDocumentStatus IN (N'B', N'C')
   AND NOT EXISTS (
-      SELECT 1 FROM T_AR_RECEIVEBILLSRCENTRY src WHERE src.FSRCBILLID = h.FID
+      SELECT 1 FROM T_AR_RECEIVEBILLSRCENTRY src WHERE src.FSRCBILLTYPEID = 'CN_RECCLAIMBILL' AND src.FSRCBILLID = h.FID
   )",
                 recAmtStr,
                 key.PayUnit,
                 key.RecOrgId,
                 key.AccountId,
-                key.SettleTypeId,
-                DocumentStatusAudited.Replace("'", "''"));
+                key.SettleTypeId);
 
             using (IDataReader reader = DBUtils.ExecuteReader(this.Context, sql))
             {
@@ -378,7 +373,7 @@ ORDER BY e.FENTRYID", billId);
         {
             try
             {
-                string sql = $"SELECT 1 FROM T_AR_RECEIVEBILLSRCENTRY WHERE FSRCBILLID = {billId}";
+                string sql = $"SELECT 1 FROM T_AR_RECEIVEBILLSRCENTRY WHERE FSRCBILLTYPEID = 'CN_RECCLAIMBILL' and FSRCBILLID = {billId}";
                 using (IDataReader reader = DBUtils.ExecuteReader(this.Context, sql))
                 {
                     return reader.Read();
