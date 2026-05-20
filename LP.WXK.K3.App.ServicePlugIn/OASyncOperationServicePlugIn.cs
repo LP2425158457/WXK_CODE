@@ -47,7 +47,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
                         }
                     }
 
-                    OASyncService oASync = new OASyncService(isPayBill);
+                    OASyncService oASync = new OASyncService(this.Context, isPayBill);
 
                     oaprocessid = GetOAProcessId(this.Context, tableName, payId);
 

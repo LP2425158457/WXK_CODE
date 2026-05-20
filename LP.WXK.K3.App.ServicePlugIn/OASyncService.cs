@@ -5,41 +5,49 @@ using Kingdee.BOS.Contracts;
 using Kingdee.BOS.Orm.DataEntity;
 using Kingdee.BOS.App;
 using Kingdee.BOS.Core.Metadata;
+using Kingdee.BOS.ServiceHelper;
 using Kingdee.BOS;
 
 namespace LP.WXK.K3.App.ServicePlugIn
 {
     public class OASyncService
     {
-        private const string DEFAULT_BASE_URL = "http://172.17.14.93:80";
-        private const string DEFAULT_SKIP_NODE_PATH = "/api/xfd/skipCurrentNode";
-        private const string PAYBILL_BASE_URL = "http://10.10.100.34:81";
-        private const string PAYBILL_SKIP_NODE_PATH = "/api/xfd/sctgfskipCurrentNode";
+        private const string PARAM_FORMID = "TWLG_OASyncConfig";
 
         private readonly string baseURL;
         private readonly string skipNodePath;
-        private readonly string appId = "f975a20b-8632-4b0a-9be7-342b010be988";
+        private readonly string appId;
         private string secrit = "";
         private string spk = "";
         private readonly HttpClient httpClient;
         private readonly Program p;
 
-        public OASyncService() : this(DEFAULT_BASE_URL, DEFAULT_SKIP_NODE_PATH)
+        public OASyncService(Context ctx, bool isPayBill)
         {
-        }
+            string defaultBaseUrl = GetParamter(ctx, PARAM_FORMID, "DefaultBaseUrl");
+            string defaultSkipNodePath = GetParamter(ctx, PARAM_FORMID, "DefaultSkipNodePath");
+            string paybillBaseUrl = GetParamter(ctx, PARAM_FORMID, "PaybillBaseUrl");
+            string paybillSkipNodePath = GetParamter(ctx, PARAM_FORMID, "PaybillSkipNodePath");
 
-        public OASyncService(bool isPayBill) : this(
-            isPayBill ? PAYBILL_BASE_URL : DEFAULT_BASE_URL,
-            isPayBill ? PAYBILL_SKIP_NODE_PATH : DEFAULT_SKIP_NODE_PATH)
-        {
-        }
-
-        private OASyncService(string baseURL, string skipNodePath)
-        {
-            this.baseURL = baseURL;
-            this.skipNodePath = skipNodePath;
+            this.baseURL = isPayBill ? paybillBaseUrl : defaultBaseUrl;
+            this.skipNodePath = isPayBill ? paybillSkipNodePath : defaultSkipNodePath;
+            this.appId = GetParamter(ctx, PARAM_FORMID, "AppId");
             httpClient = new HttpClient();
             p = new Program();
+        }
+
+        public string GetParamter(Context ctx, string formId, string key)
+        {
+            string paramter = string.Empty;
+            try
+            {
+                paramter = SystemParameterServiceHelper.GetParamter(ctx, 0, 0, formId, key).ToString();
+            }
+            catch (Exception)
+            {
+                paramter = string.Empty;
+            }
+            return paramter;
         }
 
         public bool skipCurrentCodeAsync(Context context, string requestId)
@@ -47,6 +55,8 @@ namespace LP.WXK.K3.App.ServicePlugIn
             string url = $"{baseURL}{skipNodePath}?requestId={requestId}";
             string secret = regist();
             string token = applyToken(secret);
+
+            
 
             var httpRequest = new HttpRequestMessage(HttpMethod.Get, url);
             httpRequest.Headers.Add("appid", appId);

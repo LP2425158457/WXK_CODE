@@ -19,7 +19,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
 
         private void ProcessPayBill(Context ctx)
         {
-            OASyncService oASync = new OASyncService(true);
+            OASyncService oASync = new OASyncService(ctx, true);
 
             string sql = @"
                 SELECT DISTINCT a.FID, a.F_TWLG_OAPROCESSID
@@ -34,7 +34,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
 
         private void ProcessRefundBill(Context ctx)
         {
-            OASyncService oASync = new OASyncService(false);
+            OASyncService oASync = new OASyncService(ctx, false);
 
             string sql = @"
                 SELECT DISTINCT a.FID, a.F_TWLG_OAPROCESSID
