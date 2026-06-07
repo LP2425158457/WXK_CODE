@@ -13,11 +13,14 @@ namespace LP.WXK.K3.App.ServicePlugIn
 
         public void Run(Context ctx, Schedule schedule)
         {
-            ProcessPayBill(ctx);
-            ProcessRefundBill(ctx);
+            // 从定时任务参数中获取推送起始时间
+            string pushStartTime = schedule.Parameter;
+
+            ProcessPayBill(ctx, pushStartTime);
+            ProcessRefundBill(ctx, pushStartTime);
         }
 
-        private void ProcessPayBill(Context ctx)
+        private void ProcessPayBill(Context ctx, string pushStartTime)
         {
             OASyncService oASync = new OASyncService(true);
 
@@ -29,10 +32,22 @@ namespace LP.WXK.K3.App.ServicePlugIn
                   AND b.FBANKSTATUS = '{0}'";
 
             sql = string.Format(sql, BANK_STATUS_PAID);
+
+            // 如果指定了推送起始时间，则只推送该时间之后的数据
+            if (!string.IsNullOrWhiteSpace(pushStartTime))
+            {
+                DateTime filterDate;
+                if (DateTime.TryParse(pushStartTime, out filterDate))
+                {
+                    string filterDateStr = filterDate.ToString("yyyy-MM-dd");
+                    sql += string.Format(" AND a.FDATE >= '{0}'", filterDateStr);
+                }
+            }
+
             ProcessBills(ctx, oASync, sql, "T_AP_PAYBILL");
         }
 
-        private void ProcessRefundBill(Context ctx)
+        private void ProcessRefundBill(Context ctx, string pushStartTime)
         {
             OASyncService oASync = new OASyncService(false);
 
@@ -44,6 +59,18 @@ namespace LP.WXK.K3.App.ServicePlugIn
                   AND b.FBankStatus = '{0}'";
 
             sql = string.Format(sql, BANK_STATUS_PAID);
+
+            // 如果指定了推送起始时间，则只推送该时间之后的数据
+            if (!string.IsNullOrWhiteSpace(pushStartTime))
+            {
+                DateTime filterDate;
+                if (DateTime.TryParse(pushStartTime, out filterDate))
+                {
+                    string filterDateStr = filterDate.ToString("yyyy-MM-dd");
+                    sql += string.Format(" AND a.FDATE >= '{0}'", filterDateStr);
+                }
+            }
+
             ProcessBills(ctx, oASync, sql, "T_AR_REFUNDBILL");
         }
 

@@ -1,4 +1,4 @@
-﻿using Kingdee.BOS;
+using Kingdee.BOS;
 using Kingdee.BOS.Contracts;
 using Kingdee.BOS.Core;
 using Kingdee.BOS.App.Data;
@@ -24,14 +24,17 @@ namespace LP.WXK.K3.App.ServicePlugIn
         /// 定时任务执行入口
         /// </summary>
         /// <param name="ctx">上下文</param>
-        /// <param name="schedule">定时任务配置</param>
+        /// <param name="schedule">定时任务配置，Parameter为推送起始时间（格式：yyyy-MM-dd），仅推送该时间之后的数据</param>
         public void Run(Context ctx, Schedule schedule)
         {
             RecDetailService recDetailSync = new RecDetailService();
 
             List<string> summaryFilters = GetSummaryFilters(ctx);
 
-            ProcessRecDetailBills(ctx, recDetailSync, summaryFilters);
+            // 从定时任务参数中获取推送起始时间
+            string pushStartTime = schedule.Parameter;
+
+            ProcessRecDetailBills(ctx, recDetailSync, summaryFilters, pushStartTime);
         }
 
         /// <summary>
@@ -76,7 +79,8 @@ namespace LP.WXK.K3.App.ServicePlugIn
         /// <param name="ctx">上下文</param>
         /// <param name="recDetailSync">回款明细同步服务</param>
         /// <param name="summaryFilters">摘要过滤条件列表</param>
-        private void ProcessRecDetailBills(Context ctx, RecDetailService recDetailSync, List<string> summaryFilters)
+        /// <param name="pushStartTime">推送起始时间（格式：yyyy-MM-dd），仅推送该时间之后的数据，为空则不过滤</param>
+        private void ProcessRecDetailBills(Context ctx, RecDetailService recDetailSync, List<string> summaryFilters, string pushStartTime)
         {
             if (summaryFilters == null || summaryFilters.Count == 0)
             {
@@ -96,6 +100,17 @@ namespace LP.WXK.K3.App.ServicePlugIn
                           INNER JOIN T_CN_RECCLAIMBILL c ON e.FID = c.FID
                           WHERE e.FBNKSEQNO = h.FSETTLENO AND c.FDOCUMENTSTATUS = 'C'
                       )";
+
+                // 如果指定了推送起始时间，则只推送该时间之后的数据
+                if (!string.IsNullOrWhiteSpace(pushStartTime))
+                {
+                    DateTime filterDate;
+                    if (DateTime.TryParse(pushStartTime, out filterDate))
+                    {
+                        string filterDateStr = filterDate.ToString("yyyy-MM-dd");
+                        sql += string.Format(" AND h.FTRANSDATE >= '{0}'", filterDateStr);
+                    }
+                }
 
                 using (IDataReader reader = DBUtils.ExecuteReader(ctx, sql))
                 {
