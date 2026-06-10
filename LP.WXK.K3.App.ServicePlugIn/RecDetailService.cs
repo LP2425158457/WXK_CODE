@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -29,6 +29,17 @@ namespace LP.WXK.K3.App.RecDetailSyncSchedule
 
         // 操作人ID
         private string operatorId = "1001664";
+
+        /// <summary>
+        /// 结算组织编码（FNUMBER）与zhmc01的映射
+        /// 108 西藏中卫诚康药业有限公司=1；102 洋浦京泰药业有限公司=2；104 内蒙古白医制药股份有限公司=3
+        /// </summary>
+        private static readonly Dictionary<string, string> ORG_NUMBER_TO_ZHMC01 = new Dictionary<string, string>
+        {
+            { "108", "1" },
+            { "102", "2" },
+            { "104", "3" }
+        };
 
         private readonly HttpClient httpClient;
 
@@ -250,6 +261,19 @@ namespace LP.WXK.K3.App.RecDetailSyncSchedule
             mainTable.Add("frzt", Convert.ToString(settleOrg["Name"]));// 法人主体
             mainTable.Add("zh", Convert.ToString(obj["FBANKACNTNO"]));// 账号
             mainTable.Add("zhmc", Convert.ToString(obj["FBANKACNTNAME"]));// 账号名称
+
+            // 根据结算组织编码（FNUMBER）动态计算zhmc01
+            // 108 西藏中卫诚康药业有限公司=1；102 洋浦京泰药业有限公司=2；104 内蒙古白医制药股份有限公司=3
+            string zhmc01Value = "";
+            object settleOrgNumberObj = settleOrg["Number"];
+            if (settleOrgNumberObj != null)
+            {
+                string settleOrgNumber = Convert.ToString(settleOrgNumberObj);
+                if (ORG_NUMBER_TO_ZHMC01.ContainsKey(settleOrgNumber))
+                {
+                    zhmc01Value = ORG_NUMBER_TO_ZHMC01[settleOrgNumber];
+                }
+            }
             mainTable.Add("jysj", Convert.ToDateTime(obj["FTRANSDATE"]).ToString("yyyy-MM-dd HH:mm:ss"));// 交易时间
             mainTable.Add("jffsezq", Convert.ToString(obj["FDEBITAMOUNT"]));//支取（借方发生额）
             mainTable.Add("dffsesr", Convert.ToString(obj["FCREDITAMOUNT"]));//收入（贷方发生额）
@@ -278,7 +302,7 @@ namespace LP.WXK.K3.App.RecDetailSyncSchedule
             }
             mainTable.Add("zh01", "");
             mainTable.Add("zhmc02", "1");
-            mainTable.Add("zhmc01", "1");
+            mainTable.Add("zhmc01", zhmc01Value);
             mainTable.Add("khdasfcz", "0");// 客户档案是否存在，存在传0，不存在传1
             // 5)	推送oa字段赋值时，校验“对方账户名称”是否在客户档案，若是，则oa回款明细的“客户档案是否存在”=是，若不存在，则“客户档案是否存在”=否
 

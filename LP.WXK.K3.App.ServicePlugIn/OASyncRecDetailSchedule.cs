@@ -21,6 +21,23 @@ namespace LP.WXK.K3.App.ServicePlugIn
         private const string EXCLUDED_OPP_ACCOUNT_NAME = "山西普德药业有限公司";
 
         /// <summary>
+        /// 允许推送OA回款明细的组织编码（FNUMBER）列表
+        /// 102 洋浦京泰药业有限公司、104 内蒙古白医制药股份有限公司、108 西藏中卫诚康药业有限公司
+        /// </summary>
+        private static readonly HashSet<string> ALLOWED_SETTLE_ORG_NUMBERS = new HashSet<string> { "102", "104", "108" };
+
+        /// <summary>
+        /// 组织编码（FNUMBER）与zhmc01的映射
+        /// 108 西藏中卫诚康药业有限公司=1；102 洋浦京泰药业有限公司=2；104 内蒙古白医制药股份有限公司=3
+        /// </summary>
+        private static readonly Dictionary<string, string> ORG_NUMBER_TO_ZHMC01 = new Dictionary<string, string>
+        {
+            { "108", "1" },
+            { "102", "2" },
+            { "104", "3" }
+        };
+
+        /// <summary>
         /// 定时任务执行入口
         /// </summary>
         /// <param name="ctx">上下文</param>
@@ -32,7 +49,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
             List<string> summaryFilters = GetSummaryFilters(ctx);
 
             // 从定时任务参数中获取推送起始时间
-            string pushStartTime = schedule.Parameter;
+            string pushStartTime = schedule.Parameters;
 
             ProcessRecDetailBills(ctx, recDetailSync, summaryFilters, pushStartTime);
         }
@@ -90,11 +107,15 @@ namespace LP.WXK.K3.App.ServicePlugIn
             try
             {
                 string sql = @"
-                    SELECT h.FID, h.FBILLNO, h.FEXPLANATION, h.FOppBankAcntName
+                    SELECT h.FID, h.FBILLNO, h.FEXPLANATION, h.FOppBankAcntName, h.FSETTLEORGID
                     FROM T_CN_BANKCASHFLOW h
+                    INNER JOIN T_ORG_Organizations o ON h.FSETTLEORGID = o.FORGID
                     WHERE h.F_TWLG_OASyncStatus = 0
                       AND h.FDOCUMENTSTATUS = 'C'
                       AND h.FCREDITAMOUNT > 0
+                      AND o.FNUMBER IN ('102', '104', '108')
+                      AND o.FDOCUMENTSTATUS = 'C'
+                      AND o.FFORBIDSTATUS = 'A'
                       AND NOT EXISTS (
                           SELECT 1 FROM T_CN_RECCLAIMBILLENTRY e
                           INNER JOIN T_CN_RECCLAIMBILL c ON e.FID = c.FID

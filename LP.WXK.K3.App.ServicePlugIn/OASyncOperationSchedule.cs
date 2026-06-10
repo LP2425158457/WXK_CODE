@@ -14,7 +14,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
         public void Run(Context ctx, Schedule schedule)
         {
             // 从定时任务参数中获取推送起始时间
-            string pushStartTime = schedule.Parameter;
+            string pushStartTime = schedule.Parameters;
 
             ProcessPayBill(ctx, pushStartTime);
             ProcessRefundBill(ctx, pushStartTime);

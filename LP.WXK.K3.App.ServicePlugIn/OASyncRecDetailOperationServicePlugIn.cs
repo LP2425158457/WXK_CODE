@@ -1,5 +1,6 @@
-﻿using Kingdee.BOS.Core.DynamicForm.PlugIn;
+using Kingdee.BOS.Core.DynamicForm.PlugIn;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using Kingdee.BOS.Core.DynamicForm.PlugIn.Args;
 using Kingdee.BOS.Orm.DataEntity;
@@ -14,6 +15,12 @@ namespace LP.WXK.K3.App.ServicePlugIn
     [Description("【操作插件】测试:ERP银行交易明细传输至OA回款明细（需设置过滤条件或人工选择标记）"), HotUpdate]
     public class OASyncRecDetailOperationServicePlugIn : AbstractOperationServicePlugIn
     {
+
+        /// <summary>
+        /// 允许推送OA回款明细的组织编码（FNUMBER）列表
+        /// 102 洋浦京泰药业有限公司、104 内蒙古白医制药股份有限公司、108 西藏中卫诚康药业有限公司
+        /// </summary>
+        private static readonly HashSet<string> ALLOWED_SETTLE_ORG_NUMBERS = new HashSet<string> { "102", "104", "108" };
 
         // 单据保存成功后,同步OA
         public override void AfterExecuteOperationTransaction(AfterExecuteOperationTransaction e)
@@ -31,6 +38,13 @@ namespace LP.WXK.K3.App.ServicePlugIn
                     string billNo = Convert.ToString(entity["BillNo"]);
                     long billId = Convert.ToInt64(entity["Id"]);
                     var tableName = "T_CN_BANKCASHFLOW";
+
+                    // 检查结算组织是否在允许推送的范围内（通过组织编码FNUMBER判断）
+                    string settleOrgNumber = GetSettleOrgNumber(this.Context, billId);
+                    if (!ALLOWED_SETTLE_ORG_NUMBERS.Contains(settleOrgNumber))
+                    {
+                        throw new Exception($"银行交易明细 {billNo} 的结算组织（编码={settleOrgNumber}）不在允许推送OA的范围内！");
+                    }
 
                     // 检查贷方金额是否大于0
                     decimal creditAmount = GetCreditAmount(this.Context, billId);
@@ -105,6 +119,37 @@ namespace LP.WXK.K3.App.ServicePlugIn
             {
             }
             return false;
+        }
+
+        /// <summary>
+        /// 获取结算组织的编码（FNUMBER）
+        /// </summary>
+        /// <param name="ctx">上下文</param>
+        /// <param name="billId">单据ID</param>
+        /// <returns>结算组织编码（FNUMBER），未找到返回空字符串</returns>
+        private string GetSettleOrgNumber(Context ctx, long billId)
+        {
+            try
+            {
+                string sql = string.Format(@"
+                    SELECT o.FNUMBER
+                    FROM T_CN_BANKCASHFLOW h
+                    INNER JOIN T_ORG_Organizations o ON h.FSETTLEORGID = o.FORGID
+                    WHERE h.FID = {0}
+                      AND o.FDOCUMENTSTATUS = 'C'
+                      AND o.FFORBIDSTATUS = 'A'", billId);
+                using (IDataReader reader = DBUtils.ExecuteReader(ctx, sql))
+                {
+                    if (reader.Read())
+                    {
+                        return Convert.ToString(reader["FNUMBER"]) ?? "";
+                    }
+                }
+            }
+            catch (Exception)
+            {
+            }
+            return "";
         }
 
         /// <summary>
