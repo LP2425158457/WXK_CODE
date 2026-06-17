@@ -1,0 +1,8 @@
+﻿git : warning: in the working copy of 'LP.WXK.K3.App.ServicePlugIn/OASyncService.cs', LF will be replaced by CRLF the n
+ext time Git touches it
+At line:14 char:760
++ ... } catch {}; git --no-pager diff OASyncService.cs > C:\Code\WXK\diff_o ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

@@ -4,3 +4,4 @@ C:\Code\WXK\LP.WXK.K3.App.ServicePlugIn\obj\Debug\LP.WXK.K3.App.OASyncServicePlu
 C:\Code\WXK\LP.WXK.K3.App.ServicePlugIn\obj\Debug\LP.WXK.K3.App.OASyncServicePlugIn.csproj.CopyComplete
 C:\Code\WXK\LP.WXK.K3.App.ServicePlugIn\obj\Debug\LP.WXK.K3.App.ServicePlugIn.dll
 C:\Code\WXK\LP.WXK.K3.App.ServicePlugIn\obj\Debug\LP.WXK.K3.App.ServicePlugIn.pdb
+C:\Code\WXK\LP.WXK.K3.App.ServicePlugIn\obj\Debug\LP.WXK.K3.App.OASyncServicePlugIn.csproj.AssemblyReference.cache
