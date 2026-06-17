@@ -301,7 +301,7 @@ namespace LP.WXK.K3.App.RecDetailSyncSchedule
                 mainTable.Add("symc", "");
             }
             mainTable.Add("zh01", "");
-            mainTable.Add("zhmc02", "1");
+            mainTable.Add("zhmc02", "");
             mainTable.Add("zhmc01", zhmc01Value);
             mainTable.Add("khdasfcz", "0");// 客户档案是否存在，存在传0，不存在传1
             // 5)	推送oa字段赋值时，校验“对方账户名称”是否在客户档案，若是，则oa回款明细的“客户档案是否存在”=是，若不存在，则“客户档案是否存在”=否
