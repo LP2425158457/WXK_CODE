@@ -288,7 +288,7 @@ namespace LP.WXK.K3.App.RecDetailSyncSchedule
             mainTable.Add("wrkje", "0");
             mainTable.Add("rkzt", "0");
             mainTable.Add("wwcwhdbs", "0");
-            mainTable.Add("wwcwhdsj", "2025-12-22 19:18:00");
+            mainTable.Add("wwcwhdsj", GetCurDateTime());
             DynamicObject payUnit = (DynamicObject)obj["FPAYUNIT"];
             if (payUnit != null)
             {

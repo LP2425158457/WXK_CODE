@@ -25,6 +25,8 @@ namespace LP.WXK.K3.App.ServicePlugIn
 
         private const string CONVERT_RULE_ID = "CN_RecClaimBillToRecBill";
 
+        private const string AutoPushMinTransDate = "2026-06-15";
+
         /// <summary>
         /// 金额比较容差（与标准币别小数位一致，避免舍入导致误判）
         /// </summary>
@@ -101,6 +103,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
                 }
 
                 List<long> eligibleIds = sameBatchIds.Where(id => ShouldTryGenerateReceiveBill(id)).ToList();
+                eligibleIds = FilterByAutoPushTransDate(eligibleIds);
                 if (eligibleIds.Count == 0)
                 {
                     continue;
@@ -367,6 +370,39 @@ ORDER BY e.FENTRYID", billId);
             {
             }
             return "";
+        }
+
+        private List<long> FilterByAutoPushTransDate(List<long> billIds)
+        {
+            if (billIds == null || billIds.Count == 0)
+            {
+                return new List<long>();
+            }
+
+            string ids = string.Join(",", billIds.Distinct());
+            string sql = string.Format(@"
+SELECT DISTINCT e.FID
+FROM T_CN_RECCLAIMBILLENTRY e
+INNER JOIN T_CN_BANKCASHFLOW b ON e.FBNKSEQNO = b.FSETTLENO
+WHERE e.FID IN ({0})
+  AND NOT EXISTS (
+      SELECT 1
+      FROM T_CN_RECCLAIMBILLENTRY e2
+      INNER JOIN T_CN_BANKCASHFLOW b2 ON e2.FBNKSEQNO = b2.FSETTLENO
+      WHERE e2.FID = e.FID
+        AND b2.FTRANSDATE < '{1}'
+  )", ids, AutoPushMinTransDate);
+
+            var result = new List<long>();
+            using (IDataReader reader = DBUtils.ExecuteReader(this.Context, sql))
+            {
+                while (reader.Read())
+                {
+                    result.Add(Convert.ToInt64(reader["FID"]));
+                }
+            }
+
+            return result;
         }
 
         private bool ValidateAlreadyPushed(long billId)
