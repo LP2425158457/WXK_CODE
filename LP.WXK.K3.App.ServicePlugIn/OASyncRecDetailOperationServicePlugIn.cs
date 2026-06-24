@@ -67,16 +67,18 @@ namespace LP.WXK.K3.App.ServicePlugIn
                     }
 
                     bool isSync = recDetailSync.syncBill(this.Context, billNo);
-                    // F_TWLG_OAStatus = 0（未反写）、1（已处理）
+                    // 同时写F_TWLG_OASyncStatus和F_TWLG_OAStatus，以F_TWLG_OASyncStatus为准
                     if (isSync)
                     {
-                        string sqlStr = string.Format(@"update {0} set F_TWLG_OAStatus = 1 where FBILLNO = '{1}'", tableName, billNo);
+                        // 1=已同步（成功）
+                        string sqlStr = string.Format(@"update {0} set F_TWLG_OASyncStatus = 1, F_TWLG_OAStatus = 1 where FBILLNO = '{1}'", tableName, billNo);
                         DBUtils.Execute(this.Context, sqlStr);
                         syncSuccessCount++;
                     }
                     else
                     {
-                        string sqlStr = string.Format(@"update {0} set F_TWLG_OAStatus = 2 where FBILLNO = '{1}'", tableName, billNo);
+                        // 2=同步失败
+                        string sqlStr = string.Format(@"update {0} set F_TWLG_OASyncStatus = 2, F_TWLG_OAStatus = 2 where FBILLNO = '{1}'", tableName, billNo);
                         DBUtils.Execute(this.Context, sqlStr);
                         syncFailCount++;
                     }
@@ -92,7 +94,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
         }
 
         /// <summary>
-        /// 检查单据是否已同步成功
+        /// 检查单据是否已同步成功（以F_TWLG_OASyncStatus字段为准）
         /// </summary>
         /// <param name="ctx">上下文</param>
         /// <param name="tableName">表名</param>
@@ -102,12 +104,12 @@ namespace LP.WXK.K3.App.ServicePlugIn
         {
             try
             {
-                string sql = string.Format("SELECT F_TWLG_OAStatus FROM {0} WHERE FBILLNO = '{1}'", tableName, billNo);
+                string sql = string.Format("SELECT F_TWLG_OASyncStatus FROM {0} WHERE FBILLNO = '{1}'", tableName, billNo);
                 using (IDataReader reader = DBUtils.ExecuteReader(ctx, sql))
                 {
                     if (reader.Read())
                     {
-                        object status = reader["F_TWLG_OAStatus"];
+                        object status = reader["F_TWLG_OASyncStatus"];
                         if (status != null && status != DBNull.Value)
                         {
                             return Convert.ToInt32(status) == 1;

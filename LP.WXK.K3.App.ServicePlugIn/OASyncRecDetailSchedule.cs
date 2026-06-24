@@ -184,7 +184,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
         }
 
         /// <summary>
-        /// 更新同步状态
+        /// 更新同步状态（同时写F_TWLG_OASyncStatus和F_TWLG_OAStatus，以F_TWLG_OASyncStatus为准）
         /// </summary>
         /// <param name="ctx">上下文</param>
         /// <param name="billId">单据ID</param>
@@ -193,9 +193,11 @@ namespace LP.WXK.K3.App.ServicePlugIn
         {
             try
             {
+                // F_TWLG_OAStatus 兼容旧值：3-已排除不在旧枚举里，归为2-失败以保持兼容
+                int oaStatus = status == 3 ? 2 : status;
                 string sql = string.Format(
-                    "UPDATE T_CN_BANKCASHFLOW SET F_TWLG_OASyncStatus = {0} WHERE FID = {1}",
-                    status, billId);
+                    "UPDATE T_CN_BANKCASHFLOW SET F_TWLG_OASyncStatus = {0}, F_TWLG_OAStatus = {1} WHERE FID = {2}",
+                    status, oaStatus, billId);
                 DBUtils.Execute(ctx, sql);
             }
             catch (Exception)

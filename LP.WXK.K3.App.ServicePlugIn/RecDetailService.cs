@@ -18,8 +18,7 @@ namespace LP.WXK.K3.App.RecDetailSyncSchedule
     public class RecDetailService
     {
         // 回款明细保存地址
-        // private string url = "http://10.10.100.34:81/api/cube/restful/interface/saveOrUpdateModeData/paymentCollectionSave";
-        private string url = "http://172.17.14.93:80/api/cube/restful/interface/saveOrUpdateModeData/paymentCollectionSave";
+                private string url = "https://oa.zwxk.cn/api/cube/restful/interface/saveOrUpdateModeData/paymentCollectionSave";
 
         // 系统标识
         private string systemid = "erpsysadmin";
