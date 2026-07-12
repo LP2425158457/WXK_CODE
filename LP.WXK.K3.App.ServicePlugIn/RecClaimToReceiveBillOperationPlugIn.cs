@@ -448,6 +448,28 @@ WHERE e.FID IN ({0})
             return string.Join("；", messages.Distinct());
         }
 
+        private void LogError(string message)
+        {
+            try
+            {
+                Kingdee.BOS.Log.Logger.Error("RecClaimToReceiveBill", message, null);
+            }
+            catch
+            {
+            }
+        }
+
+        private void LogError(string message, Exception ex)
+        {
+            try
+            {
+                Kingdee.BOS.Log.Logger.Error("RecClaimToReceiveBill", message + (ex == null ? "" : ("\r\n异常：" + ex)), ex);
+            }
+            catch
+            {
+            }
+        }
+
         private void AppendOperationMessages(List<string> messages, object result, string propertyName)
         {
             var property = result.GetType().GetProperty(propertyName);
@@ -563,6 +585,7 @@ WHERE e.FID IN ({0})
                 if (!saveResult.IsSuccess)
                 {
                     var errorMsg = GetOperationErrorMessage(saveResult, "保存失败");
+                    LogError($"保存收款认领单认领详情银行信息失败：{errorMsg}；源单IDs={string.Join(",", sourceBillIds)}");
                     throw new Exception($"保存收款认领单认领详情银行信息失败：{errorMsg}");
                 }
             }
@@ -612,7 +635,7 @@ INNER JOIN (
                 while (reader.Read())
                 {
                     long sourceBillId = Convert.ToInt64(reader["FID"]);
-                    map[sourceBillId] = new ClaimFlowBankInfo
+                    var info = new ClaimFlowBankInfo
                     {
                         SettleTypeId = Convert.ToInt32(reader["FSETTLETYPEID"]),
                         AccountId = Convert.ToInt32(reader["FACCOUNTID"]),
@@ -622,6 +645,22 @@ INNER JOIN (
                         OppositeBankName = Convert.ToString(reader["FOPPOSITEBANKNAME"]),
                         OppositeAccountName = Convert.ToString(reader["FOPPOSITECCOUNTNAME"])
                     };
+                    map[sourceBillId] = info;
+
+                    LogError($"源单银行信息读取：FID={sourceBillId}, SettleTypeId={info.SettleTypeId}, AccountId={info.AccountId}, AccountNumber={info.AccountNumber}, AccountName={info.AccountName}, OppositeBankAccount={info.OppositeBankAccount}, OppositeBankName={info.OppositeBankName}, OppositeAccountName={info.OppositeAccountName}");
+                }
+            }
+
+            if (map.Count == 0)
+            {
+                LogError($"源单银行信息读取结果为空：sourceBillIds={sourceIds}");
+            }
+            else
+            {
+                var nullAccountIds = map.Where(p => p.Value.AccountId <= 0).Select(p => p.Key).ToList();
+                if (nullAccountIds.Count > 0)
+                {
+                    LogError($"源单银行信息中 AccountId 为空的源单：{string.Join(",", nullAccountIds)}");
                 }
             }
 
@@ -689,12 +728,24 @@ INNER JOIN (
                 ClaimFlowBankInfo flowInfo = GetFlowInfoForReceiveEntry(entry, flowMap);
                 if (flowInfo == null)
                 {
+                    LogError($"目标收款单明细 {entryPropertyName} 未匹配到源单银行信息：FSRCBILLID={GetDynamicLongValue(entry, "FSRCBILLID")}, SRCBILLID={GetDynamicLongValue(entry, "SRCBILLID")}");
                     continue;
                 }
 
-                SetDynamicBaseDataValueIfExists(targetBillMeta, entry, "ACCOUNTID", flowInfo.AccountId);
-                SetBaseDataValueIfFieldExists(targetBillMeta, entry, "ACCOUNTID", flowInfo.AccountId);
-                SetDynamicValueIfExists(entry, "ACCOUNTID_Id", flowInfo.AccountId);
+                long matchedSrcBillId = GetDynamicLongValue(entry, "FSRCBILLID");
+                if (matchedSrcBillId <= 0)
+                {
+                    matchedSrcBillId = GetDynamicLongValue(entry, "SRCBILLID");
+                }
+
+                if (flowInfo.AccountId <= 0)
+                {
+                    LogError($"目标收款单明细 {entryPropertyName} 对应源单 AccountId 为空，无法赋值我方银行账号：源单FID={matchedSrcBillId}, SettleTypeId={flowInfo.SettleTypeId}, entryPropertyName={entryPropertyName}");
+                }
+
+                bool accountObjSet = SetDynamicBaseDataValueIfExists(targetBillMeta, entry, "ACCOUNTID", flowInfo.AccountId);
+                bool accountIdSet = SetBaseDataValueIfFieldExists(targetBillMeta, entry, "ACCOUNTID", flowInfo.AccountId);
+                bool accountIdDynamicSet = SetDynamicValueIfExists(entry, "ACCOUNTID_Id", flowInfo.AccountId);
                 SetBaseDataRefIdIfFieldExists(targetBillMeta, entry, "FACCOUNTID", flowInfo.AccountId);
                 SetBaseDataRefIdIfFieldExists(targetBillMeta, entry, "FACCOUNT", flowInfo.AccountId);
                 SetBaseDataRefIdIfFieldExists(targetBillMeta, entry, "FRECEIVEACCOUNTID", flowInfo.AccountId);
@@ -703,6 +754,8 @@ INNER JOIN (
                 SetDynamicValueIfExists(entry, "FOPPOSITEBANKACCOUNT", flowInfo.OppositeBankAccount);
                 SetDynamicValueIfExists(entry, "FOPPOSITEBANKNAME", flowInfo.OppositeBankName);
                 SetDynamicValueIfExists(entry, "FOPPOSITECCOUNTNAME", flowInfo.OppositeAccountName);
+
+                LogError($"目标收款单明细 {entryPropertyName} 银行字段赋值：源单FID={matchedSrcBillId}, AccountId={flowInfo.AccountId}, ACCOUNTID对象赋值={accountObjSet}, ACCOUNTID_Id赋值={accountIdDynamicSet}, FACCOUNTID字段赋值={accountIdSet}, 赋值后诊断={FormatEntryBankDiagnostic(entry)}");
             }
         }
 
@@ -905,6 +958,28 @@ ORDER BY FID", accountId);
             return Convert.ToString(value);
         }
 
+        private string FormatEntryBankDiagnostic(DynamicObject entry)
+        {
+            if (entry == null)
+            {
+                return "entry=null";
+            }
+
+            var parts = new List<string>();
+            string[] fieldNames = { "ACCOUNTID_Id", "ACCOUNTID", "SETTLETYPEID_Id", "SETTLETYPEID", "FOPPOSITEBANKACCOUNT", "FOPPOSITEBANKNAME", "FOPPOSITECCOUNTNAME" };
+            foreach (string fieldName in fieldNames)
+            {
+                if (!entry.DynamicObjectType.Properties.ContainsKey(fieldName))
+                {
+                    continue;
+                }
+
+                parts.Add(fieldName + "=" + FormatDiagnosticValue(entry[fieldName]));
+            }
+
+            return string.Join(",", parts);
+        }
+
         private string BuildReceiveBillEntryPropertyDiagnostic(DynamicObject[] receiveBills)
         {
             if (receiveBills == null || receiveBills.Length == 0)
@@ -966,7 +1041,9 @@ ORDER BY FID", accountId);
                 return flowInfo;
             }
 
-            return flowMap.Values.FirstOrDefault(o => o != null && o.AccountId > 0);
+            var fallback = flowMap.Values.FirstOrDefault(o => o != null && o.AccountId > 0);
+            LogError($"目标收款单明细源单匹配回退：FSRCBILLID={GetDynamicLongValue(entry, "FSRCBILLID")}, SRCBILLID={GetDynamicLongValue(entry, "SRCBILLID")}, 是否回退首个={fallback != null}, 回退AccountId={(fallback == null ? 0 : fallback.AccountId)}");
+            return fallback;
         }
 
         private long GetDynamicLongValue(DynamicObject data, string propertyName)
@@ -1181,11 +1258,14 @@ ORDER BY FID", accountId);
 
                 FillReceiveBillBankInfo(objs, billIds, targetBillMeta);
 
+                LogError($"下推收款单准备保存：目标单数量={objs.Length}, 源单IDs={string.Join(",", billIds)}, 赋值后诊断={BuildReceiveBillBankValueDiagnostic(objs)}");
+
                 var saveResult = BusinessDataServiceHelper.Save(this.Context, targetBillMeta.BusinessInfo, objs, saveOption, "Save");
 
                 if (!saveResult.IsSuccess)
                 {
                     var errorMsg = GetOperationErrorMessage(saveResult, "保存失败");
+                    LogError($"保存收款单失败：{errorMsg}；源单IDs={string.Join(",", billIds)}；银行字段赋值诊断：{BuildReceiveBillBankValueDiagnostic(objs)}；明细属性诊断：{BuildReceiveBillEntryPropertyDiagnostic(objs)}");
                     throw new Exception($"保存收款单失败：{errorMsg}；银行字段赋值诊断：{BuildReceiveBillBankValueDiagnostic(objs)}");
                 }
 
@@ -1199,6 +1279,7 @@ ORDER BY FID", accountId);
                 if (!submitResult.IsSuccess)
                 {
                     var errorMsg = GetOperationErrorMessage(submitResult, "提交失败");
+                    LogError($"提交收款单失败：{errorMsg}；源单IDs={string.Join(",", billIds)}");
                     throw new Exception($"提交收款单失败：{errorMsg}");
                 }
 
@@ -1206,11 +1287,13 @@ ORDER BY FID", accountId);
                 if (!applyResult.IsSuccess)
                 {
                     var errorMsg = GetOperationErrorMessage(applyResult, "审核失败");
+                    LogError($"审核收款单失败：{errorMsg}；源单IDs={string.Join(",", billIds)}");
                     throw new Exception($"审核收款单失败：{errorMsg}");
                 }
             }
             catch (Exception ex)
             {
+                LogError($"下推收款单操作失败：{ex.Message}", ex);
                 throw new Exception($"下推收款单操作失败：{ex.Message}");
             }
         }

@@ -11,7 +11,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
 {
     public class OASyncService
     {
-        private const string DEFAULT_BASE_URL = "https://172.17.14.93:80";
+        private const string DEFAULT_BASE_URL = "http://172.17.14.93:80";
         private const string DEFAULT_SKIP_NODE_PATH = "/api/xfd/skipCurrentNode";
         private const string PAYBILL_BASE_URL = "http://10.10.100.34:81";
         private const string PAYBILL_SKIP_NODE_PATH = "/api/xfd/sctgfskipCurrentNode";

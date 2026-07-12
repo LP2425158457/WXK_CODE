@@ -10,6 +10,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
     public class OASyncOperationSchedule : IScheduleService
     {
         private const string BANK_STATUS_PAID = "F";
+        private const string BANK_STATUS_BANK_SUCCESS = "C";
 
         public void Run(Context ctx, Schedule schedule)
         {
@@ -56,9 +57,9 @@ namespace LP.WXK.K3.App.ServicePlugIn
                 FROM T_AR_REFUNDBILL a
                 INNER JOIN T_AR_REFUNDBILLENTRY_B b ON a.FID = b.FID
                 WHERE (a.F_TWLG_OAStatus = 0 OR a.F_TWLG_OAStatus = 2 OR a.F_TWLG_OAStatus IS NULL)
-                  AND b.FBankStatus = '{0}'";
+                  AND b.FBankStatus IN ('{0}', '{1}')";
 
-            sql = string.Format(sql, BANK_STATUS_PAID);
+            sql = string.Format(sql, BANK_STATUS_PAID, BANK_STATUS_BANK_SUCCESS);
 
             // 如果指定了推送起始时间，则只推送该时间之后的数据
             if (!string.IsNullOrWhiteSpace(pushStartTime))

@@ -43,7 +43,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
 
                         if (!IsBankStatusPaid(this.Context, payId))
                         {
-                           throw new Exception($"收款退款单 {billNo} 尚未执行已付款确认，不允许同步OA！");
+                           throw new Exception($"收款退款单 {billNo} 尚未执行已付款确认或银行交易未成功，不允许同步OA！");
                         }
                     }
 
@@ -141,7 +141,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
                     if (reader.Read())
                     {
                         string bankStatus = Convert.ToString(reader["FBankStatus"]);
-                        return bankStatus == "F";
+                        return bankStatus == "F" || bankStatus == "C";
                     }
                 }
             }
@@ -159,7 +159,7 @@ namespace LP.WXK.K3.App.ServicePlugIn
                         if (reader.Read())
                         {
                             string bankStatus = Convert.ToString(reader["FBANKSTATUS"]);
-                            return bankStatus == "F";
+                            return bankStatus == "F" || bankStatus == "C";
                         }
                     }
                 }
